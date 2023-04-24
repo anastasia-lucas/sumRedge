@@ -119,6 +119,10 @@ get_gcount <- function(n.case, n.ctrl, or, se, freq, epsilon = 0.01){
     gcount$case[1] <- 0; gcount$case[2] <- 0; gcount$case[3] <- 0
     gcount$ctrl[1] <- 0; gcount$ctrl[2] <- 0; gcount$ctrl[3] <- 0
   }
+  # pop, case, ctrl
+  gcount$freqs[1] <- group.freq$pPop
+  gcount$freqs[2] <- group.freq$pCa
+  gcount$freqs[3] <- group.freq$pCo
   
   return(gcount)
 }
@@ -219,5 +223,16 @@ run_edge_regression <- function(n.case, n.ctrl, or, se, freq, epsilon){
   
 }
 
+
+#' get frequency of allele coded as 2
+#' @param x vector of snps coded 0,1,2
+#' @param vector of phenotypes
+#' @param group 'case', 'control', 'population'
+get_freq2 <- function(x, y, group = "population"){
+  if(group == 'case') {x <- x[y == 1]}
+  if(group == 'control') {x <- x[y == 0]}
+  a2f <- (length(x[x == 2])*2 + length(x[x == 1]))/(2*length(x))
+  return(a2f)
+}
 
 

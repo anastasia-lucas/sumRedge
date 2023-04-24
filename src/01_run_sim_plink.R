@@ -21,9 +21,11 @@ set.seed(42)
 ####################################################
 
   
-test.dir <- file.path("simulated_data/add_maf_0.01-0.02_or_0.5-0.5.param_1000-1000_0.01-0.raw")
+test.dir <- file.path("simulated_data")
 
-out.dir <- file.path("simulated_data-additive_results/")
+all.files <- 
+
+out.dir <- file.path("snapshots/simulated_data_results/dominant.txt")
 
 ####################################################
 #                     functions                    #  
@@ -41,7 +43,11 @@ get_cc <- function(filepath){
 
 #' get frequency of allele coded as 2
 #' @param x vector of snps coded 0,1,2
-get_freq2 <- function(x){
+#' @param vector of phenotypes
+#' @param group 'case', 'control', 'population'
+get_freq2 <- function(x, y, group = "population"){
+  if(group == 'case') {x <- x[y == 1]}
+  if(group == 'control') {x <- x[y == 0]}
   a2f <- (length(x[x == 2])*2 + length(x[x == 1]))/(2*length(x))
   return(a2f)
 }
@@ -50,9 +56,9 @@ get_freq2 <- function(x){
 #                       main                       #  
 ####################################################
 
-raw <- data.table::fread(file.path(test.dir))
+raw <- as.data.frame(data.table::fread(file.path(test.dir)))
 raw$PHENOTYPE <- raw$PHENOTYPE - 1 
-genos <- raw[, 7:ncol(raw)]
+genos <- raw[, grep("disease", names(raw))]
 
 ######### original regression 
 
@@ -78,6 +84,8 @@ data.frame(or = or.org, p = p.org) %>%
 n.cases <- rep(get_cc(temp.dir)$case, length(or.org)) 
 n.ctrls <- rep(get_cc(temp.dir)$ctrl, length(or.org))
 freq.org <- unlist(lapply(genos, get_freq2))
+case.org <- unlist(lapply(genos, get_freq2, group = "case", y = raw$PHENOTYPE))
+ctrl.org <- unlist(lapply(genos, get_freq2, group = "control", y = raw$PHENOTYPE))
 
 all.res <- list()
 for(i in 1:length(or.org)){
@@ -103,6 +111,15 @@ beta.new <- unlist(lapply(regression, function(x) x[1]))
 or.new <- unlist(lapply(regression, function(x) x[2]))
 se.new <- unlist(lapply(regression, function(x) x[3]))
 p.new <- unlist(lapply(regression, function(x) x[4]))
+
+
+######### make figures
+
+# grid columns = metric
+# grid rows = maf
+# x-axis = OR with penetrance grouped
+# color CC ratio
+# difference
 
 data.frame(or.org = or.org, or.new = or.new) %>% 
   ggplot(aes(x = or.org, y = or.new)) + 
@@ -131,4 +148,18 @@ data.frame(p.org = -log10(p.org), p.new = -log10(p.new)) %>%
   geom_point() + 
   geom_abline(slope = 1, intercept = 0) + 
   theme_classic() 
+
+######## compare actual het and homozygous counts
+table(genos.new[[1]]$pheno, genos.new[[1]]$snp)
+tab <- table(raw$PHENOTYPE, genos$disease_0_D)
+
+# p(case | ref)
+p.ref <- (tab[2,1]/(tab[1,1] + tab[2,1])); or.ref <- p.ref / (1 - p.ref)
+# p(case | ref)
+p.alt <- (tab[2,3]/(tab[1,3] + tab[2,3])); or.alt <- p.alt/ (1 - p.alt)
+
+p.ref/p.alt
+
+
+
 
