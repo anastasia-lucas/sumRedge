@@ -45,6 +45,7 @@ format_data <- function(filepath){
 #' @return edge alpha values
 calc_edge <- function(x, y){
   x <- data.frame(raw = x)
+  # print(x[1:10, ])
   x$het <- ifelse(x$raw == 1, 1, 0)
   x$homo.alt <- ifelse(x$raw == 2, 1, 0)
 
@@ -62,10 +63,11 @@ calc_edge <- function(x, y){
 #' @return list of summary stats
 get_summary_stats <- function(geno, pheno){
   
-  models <- paste0("pheno ~ geno$", names(genos))
+  models <- paste0("pheno ~ geno$", names(geno))
   
   regression <- lapply(models, function(x){
-    res <- summary(glm(formula = x, family = "binomial"))$coefficients
+
+    res <- summary(glm(formula = as.formula(x), family = "binomial"))$coefficients
     # beta, or, se, p
     res.list <- c(res[2,1], exp(res[2,1]), res[2,2], res[2,4])
     return(res.list)
@@ -135,6 +137,10 @@ get_summary_comparison <- function(filepath){
   
   data <- format_data(filepath)
   
+  # to speed up
+  set.seed(42)
+  data$geno <- data$geno[, sample(ncol(data$geno), 1000)]
+  
   print("Calculating edges...")
   
   edges <- lapply(data$geno, calc_edge, y = data$pheno)
@@ -159,15 +165,39 @@ get_summary_comparison <- function(filepath){
                                       n.ctrl = cc$ctrl,
                                       or = reg.org$or,
                                       se = reg.org$se,
-                                      freq = unlist(freq.pop))
+                                      freq = unname(unlist(freq.pop)))
   
-  print("Rerunning regressions....")
+  print("Rerunning regressions...")
   
   reg.new <- rerun_regression(gcounts)
   
-  result <- list(original = reg.org, reconstruction = reg.new, 
-                 case.freq = freq.case, ctrl.freq = freq.ctrl,
-                 gcounts = gcounts, edges = edges)
+  print("Concatenating results...")
+  
+  gfreqs <- lapply(gcounts, function(x) return(x$freqs))
+  gfreqs.case <- unlist(lapply(gfreqs, function(x) return(x[2])))
+  gfreqs.ctrl <- unlist(lapply(gfreqs, function(x) return(x[3])))
+  
+  result <- data.frame(dataset = filepath,
+                       mean.diff.or = mean(reg.org$or - reg.new$or),
+                       mean.diff.beta = mean(reg.org$beta - reg.new$beta),
+                       mean.diff.p = median(reg.org$p - reg.new$p),
+                       median.diff.or = median(reg.org$or - reg.new$or),
+                       median.diff.beta = median(reg.org$beta - reg.new$beta),
+                       median.diff.p = median(reg.org$p - reg.new$p),
+                       cor.or = cor(reg.org$or, reg.new$or),
+                       cor.beta = cor(reg.org$beta, reg.new$beta),
+                       cor.p = cor(reg.org$p, reg.new$p),
+                       mean.freq.case.diff = mean(unname(unlist(freq.case)) - gfreqs.case),
+                       median.freq.case.diff = median(unname(unlist(freq.case)) - gfreqs.case),
+                       mean.freq.ctrl.diff = mean(unname(unlist(freq.ctrl)) - gfreqs.ctrl),
+                       median.freq.ctrl.diff = median(unname(unlist(freq.ctrl)) - gfreqs.ctrl),
+                       cor.freq.case = cor(unname(unlist(freq.case)), gfreqs.case),
+                       cor.freq.ctrl = cor(unname(unlist(freq.ctrl)), gfreqs.ctrl),
+                       edges.min = min(unname(unlist(edges))),
+                       edges.Q1 = as.numeric(summary(unname(unlist(edges)))[2]),
+                       edges.med = median(unname(unlist(edges))),
+                       edges.Q3 = as.numeric(summary(unname(unlist(edges)))[5]),
+                       edges.max = max(unname(unlist(edges))))
   
   
   print("Finished")

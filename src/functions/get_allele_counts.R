@@ -223,6 +223,14 @@ run_edge_regression <- function(n.case, n.ctrl, or, se, freq, epsilon){
   
 }
 
+#' get case control ratio
+get_cc <- function(filepath){
+  sub <- strsplit(strsplit(strsplit(test.dir, "param_")[[1]][2], "_")[[1]][1], "-")[[1]]
+  cc <- list()
+  cc$case <- as.integer(sub[1])
+  cc$ctrl <- as.integer(sub[1])
+  return(cc)
+}
 
 #' get frequency of allele coded as 2
 #' @param x vector of snps coded 0,1,2
