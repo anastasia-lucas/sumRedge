@@ -172,7 +172,7 @@ get_summary_comparison <- function(filepath){
   
   print("Finished")
   
-  return(reg.org)
+  return(result)
   
 }
 
