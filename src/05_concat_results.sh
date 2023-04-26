@@ -1,0 +1,1 @@
+cat <(head -1 snapshots/summaries/disease_dom_maf_0.4-0.49_or_1-2.0.param_250-1000_0.01-0-summary.txt ) <(cat snapshots/summaries/disease_dom_maf_0.* |grep -v "dataset" ) > snapshots/summary-disease-all.txt
