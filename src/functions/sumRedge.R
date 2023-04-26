@@ -11,7 +11,7 @@ format_subsets <- function(filepath){
   raw <- raw[sample(1:nrow(raw)), ]
   raw$PHENOTYPE <- raw$PHENOTYPE - 1 
   
-  genos <- raw[, 7:ncol(genos)]
+  genos <- raw[, 7:ncol(raw)]
   
   x1 <- list(geno = genos[1:11000,], pheno = raw$PHENOTYPE[1:11000])
   x2 <- list(geno = genos[11001:22000, ], pheno = raw$PHENOTYPE[11001:22000])
@@ -119,3 +119,66 @@ evaluate_sumRedge <- function(filepath){
   return(result)
   
 }
+
+#' get summary for 1K snp set
+#' @param filepath simulated data location
+#' @param seed seed for permuting phenotypes
+#' @return summary comparison between original and reconstructed genotypes
+evaluate_sumRedge_null <- function(filepath, seed){
+  
+  print("Loading data...")
+  
+  set.seed(42)
+  
+  data <- format_subsets(filepath)
+  
+  print("Computing summary statistics...")
+  
+  reg.org <- get_summary_stats(geno = data$train$geno, 
+                               pheno = data$train$pheno)
+  
+  freq.pop <- lapply(data$train$geno, get_freq2, data$train$pheno)
+  
+  print("Reconstructing genotype vectors...")
+  
+  gcounts <- reconstruct_from_summary(n.cases = length(data$train$pheno[data$train$pheno == 1]), 
+                                      n.ctrl = length(data$train$pheno[data$train$pheno == 0]),
+                                      or = reg.org$or,
+                                      se = reg.org$se,
+                                      freq = unname(unlist(freq.pop)))
+  
+  print("Calculating edges")
+  
+  edges <- lapply(data$train$geno, calc_edge, y = data$train$pheno)
+  
+  print("Rerunning regressions...")
+  
+  set.seed(seed)
+  
+  y <- sample(data$test$pheno, size = length(data$test$pheno))
+  
+  reg.new <- sumRedge(data$test$geno, y, edges)
+  
+  reg.add <- get_summary_stats(geno = data$test$geno, pheno = y)
+  
+  # print("Running permutations...")
+  
+  print("Concatenating results...")
+  
+  result <- data.frame(dataset = filepath,
+                       edge = reg.new$edge,
+                       edge.beta = reg.new$beta,
+                       edge.or = reg.new$or,
+                       edge.se = reg.new$se,
+                       edge.p = reg.new$p,
+                       add.beta = reg.add$beta,
+                       add.or = reg.add$or,
+                       add.se = reg.add$se,
+                       add.p = reg.add$p)
+  
+  print("Finished")
+  
+  return(result)
+  
+}
+
