@@ -1,0 +1,18 @@
+#!/bin/bash
+#BSUB -J maf10[1-8]
+#BSUB -N
+#BSUB -o maf10.out
+#BSUB -e maf10.err
+#BSUB -q i2c2_normal
+#BSUB -M 12000
+#BSUB -n 1
+#BSUB -R span[hosts=1]
+#BSUB -B
+#BSUB -W 4:00
+
+module load R/4.2
+
+myArray=(`ls simu-maf-0.1-0.15/ |sed 's/_/\t/g' |cut -f6 |sort |uniq`)
+myValue="${myArray[${LSB_JOBINDEX} - 1]}"
+
+Rscript src/01_run_sim_plink.R simu-maf-0.1-0.15 ${myValue}  
