@@ -1,0 +1,18 @@
+#!/bin/bash
+#BSUB -J power[1-35]
+#BSUB -N
+#BSUB -o power.out
+#BSUB -e power.err
+#BSUB -q i2c2_normal
+#BSUB -M 8000
+#BSUB -n 1
+#BSUB -R span[hosts=1]
+#BSUB -B
+#BSUB -W 6:00
+
+module load R/4.2
+
+myArray=(`ls simu-2pop/*raw |sed 's@simu-2pop/@@g'`)
+myValue="${myArray[${LSB_JOBINDEX} - 1]}"
+
+Rscript src/12_run_sim_power_plink.R simu-2pop ${myValue}  
