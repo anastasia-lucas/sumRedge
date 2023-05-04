@@ -33,11 +33,11 @@ sumRedge <- function(geno, pheno, edges){
                     snp = x)
   })
   
-  genos.edge <- mapply(function(x, y){
+  genos.edge <- mapply(function(x, e){
     x$snp <- x$snp/2
-    x$snp[x$snp == 0.5] <- y
+    x$snp[x$snp == 0.5] <- e
     return(x)
-  }, x = genos.new, y = edges, SIMPLIFY = FALSE)
+  }, x = genos.new, e = edges, SIMPLIFY = FALSE)
   
   regression <- lapply(genos.edge, function(x){
     res <- tryCatch(summary(glm(pheno ~ snp, data = x))$coefficients, error = function(e) c(0,0,0,0))
@@ -57,7 +57,6 @@ sumRedge <- function(geno, pheno, edges){
   return(x)
   
 }
-
 
 #' get summary for 10K snp set
 #' @param filepath simulated data location
@@ -90,25 +89,31 @@ evaluate_sumRedge <- function(filepath){
   
   print("Calculating edges")
   
-  edges <- lapply(data$train$geno, calc_edge, y = data$train$pheno)
+  edges.train <- lapply(data$train$geno, calc_edge, y = data$train$pheno)
+  edges.test <- lapply(data$test$geno, calc_edge, y = data$test$pheno)
   
   print("Rerunning regressions...")
   
-  reg.new <- sumRedge(data$test$geno, data$test$pheno, edges)
+  reg.new <- sumRedge(data$test$geno, data$test$pheno, edges.train)
+  
+  reg.edge <- sumRedge(data$test$geno, data$test$pheno, edges.test)
   
   reg.add <- get_summary_stats(geno = data$test$geno, 
                                pheno = data$test$pheno)
   
-  # print("Running permutations...")
-  
   print("Concatenating results...")
   
   result <- data.frame(dataset = filepath,
-                       edge = reg.new$edge,
-                       edge.beta = reg.new$beta,
-                       edge.or = reg.new$or,
-                       edge.se = reg.new$se,
-                       edge.p = reg.new$p,
+                       sumRedge.edge = reg.new$edge,
+                       sumRedge.beta = reg.new$beta,
+                       sumRedge.or = reg.new$or,
+                       sumRedge.se = reg.new$se,
+                       sumRedge.p = reg.new$p,
+                       edge.edge = reg.edge$edge,
+                       edge.beta = reg.edge$beta,
+                       edge.or = reg.edge$or,
+                       edge.se = reg.edge$se,
+                       edge.p = reg.edge$p,
                        add.beta = reg.add$beta,
                        add.or = reg.add$or,
                        add.se = reg.add$se,
@@ -149,7 +154,7 @@ evaluate_sumRedge_null <- function(filepath, seed){
   
   print("Calculating edges")
   
-  edges <- lapply(data$train$geno, calc_edge, y = data$train$pheno)
+  edges.train <- lapply(data$train$geno, calc_edge, y = data$train$pheno)
   
   print("Rerunning regressions...")
   
@@ -157,7 +162,10 @@ evaluate_sumRedge_null <- function(filepath, seed){
   
   y <- sample(data$test$pheno, size = length(data$test$pheno))
   
-  reg.new <- sumRedge(data$test$geno, y, edges)
+  reg.new <- sumRedge(data$test$geno, pheno = y, edges.train)
+  
+  edges.test <- lapply(data$test$geno, calc_edge, y = y)
+  reg.edge <- sumRedge(data$test$geno, pheno = y, edges.test)
   
   reg.add <- get_summary_stats(geno = data$test$geno, pheno = y)
   
@@ -166,11 +174,16 @@ evaluate_sumRedge_null <- function(filepath, seed){
   print("Concatenating results...")
   
   result <- data.frame(dataset = filepath,
-                       edge = reg.new$edge,
-                       edge.beta = reg.new$beta,
-                       edge.or = reg.new$or,
-                       edge.se = reg.new$se,
-                       edge.p = reg.new$p,
+                       sumRedge.edge = reg.new$edge,
+                       sumRedge.beta = reg.new$beta,
+                       sumRedge.or = reg.new$or,
+                       sumRedge.se = reg.new$se,
+                       sumRedge.p = reg.new$p,
+                       edge.edge = reg.edge$edge,
+                       edge.beta = reg.edge$beta,
+                       edge.or = reg.edge$or,
+                       edge.se = reg.edge$se,
+                       edge.p = reg.edge$p,
                        add.beta = reg.add$beta,
                        add.or = reg.add$or,
                        add.se = reg.add$se,
@@ -181,4 +194,3 @@ evaluate_sumRedge_null <- function(filepath, seed){
   return(result)
   
 }
-
